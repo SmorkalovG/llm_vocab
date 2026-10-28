@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Испанский → Anki</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
+    body { margin: 0; padding: 24px; background: #f6f7f9; color: #20242a; }
+    main { max-width: 1100px; margin: 0 auto; }
+    h1 { margin: 0 0 5px; font-size: 1.5rem; }
+    p { line-height: 1.5; }
+    .hint { color: #626b77; font-size: .9rem; }
+    .panel { background: #fff; border: 1px solid #e2e5eb; padding: 18px; border-radius: 10px; margin: 16px 0; }
+    label { font-size: .95rem; }
+    textarea, input[type="text"], input[type="url"], input[type="password"], select { font: inherit; border: 1px solid #bac2ce; border-radius: 5px; padding: 7px; box-sizing: border-box; }
+    .settings summary { cursor: pointer; font-weight: 600; }
+    .settings-fields { display: grid; gap: 12px; margin-top: 16px; }
+    .settings-fields label { display: grid; gap: 6px; }
+    .settings-fields input { width: 100%; }
+    textarea { width: 100%; min-height: 150px; resize: vertical; margin-top: 8px; }
+    button { font: inherit; cursor: pointer; border: 1px solid #b9c2ce; border-radius: 6px; padding: 8px 12px; background: #fff; }
+    button.primary { background: #205ec9; color: white; border-color: #205ec9; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+    .toolbar label { display: inline-flex; gap: 6px; align-items: center; }
+    .image-preview { display: block; max-width: 100%; max-height: 300px; margin-top: 12px; border-radius: 5px; }
+    #imageName { overflow-wrap: anywhere; }
+    .status { min-height: 1.3em; margin-top: 10px; color: #465566; white-space: pre-wrap; }
+    .status.error { color: #ad2731; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: .94rem; }
+    th, td { border-bottom: 1px solid #e7e9ef; text-align: left; padding: 8px; vertical-align: middle; }
+    th { background: #f5f6f9; white-space: nowrap; }
+    td input[type="text"] { width: 100%; min-width: 140px; }
+    .small { font-size: .82rem; color: #646b75; }
+    .center { text-align: center; }
+    .empty { padding: 18px 8px; color: #626b77; }
+    @media (max-width: 600px) { body { padding: 10px; } .panel { padding: 12px; } }
+  </style>
+  <script src="app.js" defer></script>
+</head>
+<body>
+<main>
+  <details class="panel settings">
+    <summary>Настройки</summary>
+    <div class="settings-fields">
+      <label for="apiUrl">Адрес API
+        <input id="apiUrl" type="url" value="http://localhost:8081" placeholder="http://localhost:8081" aria-describedby="apiUrlHint" spellcheck="false">
+      </label>
+      <span id="apiUrlHint" class="hint">Хост и при необходимости путь. Суффикс /v1/chat/completions добавляется автоматически.</span>
+      <label for="apiKey">Ключ API
+        <input id="apiKey" type="password" autocomplete="off" placeholder="Необязательный">
+      </label>
+      <label for="model">Модель
+        <input id="model" type="text" value="local-model" spellcheck="false">
+      </label>
+    </div>
+  </details>
+  <h1>Испанский → Anki</h1>
+  <p class="hint">Вставь испанский текст, открой TXT-файл или загрузи изображение с текстом. Выбери слова и скачай TSV для Anki. Ничего не сохраняется между перезагрузками.</p>
+
+  <section class="panel" aria-labelledby="input-title">
+    <h2 id="input-title">1. Исходный текст или изображение</h2>
+    <label for="sourceText">Текст на испанском</label>
+    <textarea id="sourceText" placeholder="Ayer me di cuenta de que había olvidado las llaves..."></textarea>
+    <div class="toolbar">
+      <label>Загрузить TXT или изображение <input id="fileInput" type="file" accept=".txt,text/plain,.png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif" aria-describedby="imageHint"></label>
+      <button id="analyzeBtn" class="primary">Разобрать</button>
+      <button id="cancelBtn" hidden>Отменить запрос</button>
+    </div>
+    <p id="imageHint" class="hint">PNG, JPEG, WebP или GIF, до 20 МБ. Изображение можно отправить отдельно или вместе с текстом. Модель должна поддерживать изображения.</p>
+    <div id="imageAttachment" hidden>
+      <img id="imagePreview" class="image-preview" alt="Выбранное изображение с испанским текстом">
+      <div class="toolbar">
+        <span id="imageName" class="small"></span>
+        <button id="removeImageBtn">Удалить изображение</button>
+      </div>
+    </div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="results-title">
+    <h2 id="results-title">2. Лексемы <span id="summary" class="small"></span></h2>
+    <div class="toolbar">
+      <label for="minLevel">Уровень от
+        <select id="minLevel">
+          <option value="A1">A1</option><option value="A2">A2</option><option value="B1" selected>B1</option>
+          <option value="B2">B2</option><option value="C1">C1</option><option value="C2">C2</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="showExt"> Показывать внешние элементы (ext)</label>
+      <button id="selectVisibleBtn">Отметить видимые</button>
+      <button id="clearSelectedBtn">Снять все отметки</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th class="center">✓</th><th>Исходная форма (lexema)</th><th>Словарная форма (orig)</th><th>Перевод</th><th>CEFR</th><th>ext</th></tr></thead>
+        <tbody id="resultBody"><tr><td colspan="6" class="empty">Пока нет результатов. Вставь текст и нажми «Разобрать».</td></tr></tbody>
+      </table>
+    </div>
+    <div class="toolbar">
+      <button id="exportBtn" class="primary" disabled>Выгрузить в Anki (.tsv)</button>
+      <span id="selectionCount" class="small">Выбрано: 0</span>
+    </div>
+    <p class="hint">Экспортируются все отмеченные строки, включая скрытые фильтром. Формат: orig → russian, без заголовка.</p>
+  </section>
+</main>
+</body>
+</html>
